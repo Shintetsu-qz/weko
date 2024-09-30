@@ -29,9 +29,13 @@
     {{ webpack['items_ui_css_feedback_maillist.css']}}
     {{ webpack['records_ui_css_style.css']}}
   {%- endblock css %}
-
+ 
   {%- block javascript %}
+  
 
+  {{ webpack['theme-schema-form.js']}}
+  {{ webpack['theme-angular.js']}}
+  
   <!--<script src="https://unpkg.com/react@16/umd/react.production.min.js" crossorigin></script>-->
   <!--script src="https://unpkg.com/react-dom@16/umd/react-dom.production.min.js" crossorigin></script>-->
   <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-core/5.8.38/browser.min.js"></script>-->
@@ -39,6 +43,9 @@
   <script src="{{ url_for('static', filename='js/react/react-dom.production.min.js') }}" crossorigin></script>
   <script src="{{ url_for('static', filename='js/babel-cores/browser.min.js') }}"></script>
   <script src="{{ url_for('static', filename='js/axios/axios.min.js') }}"></script>
+  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-sortable/0.19.0/sortable.min.js"></script> -->
+  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script> -->
+
 
     <!--<script src="https://unpkg.com/axios/dist/axios.min.js"></script>-->
 
@@ -52,9 +59,11 @@
     {{ webpack['items_ui_js_upload.js']}}
     {% endif %}
     {{ webpack['items_ui_js_app.js']}}
-    <script src="{{ url_for('static', filename='js/weko_items_ui/inline.items.authorSearch.bundle.js') }}" defer></script>
-    <script src="{{ url_for('static', filename='js/weko_items_ui/polyfills.items.authorSearch.bundle.js') }}" defer></script>
-    <script src="{{ url_for('static', filename='js/weko_items_ui/main.items.authorSearch.bundle.js') }}" defer></script>
+    <!-- <script src="{{ url_for('static', filename='js/weko_items_ui/uni.bundle.js') }}" defer></script> -->
+    <!-- <script src="{{ url_for('static', filename='js/weko_items_ui/inline.bundle.js') }}" defer></script> -->
+    <!-- <script src="{{ url_for('static', filename='js/weko_items_ui/polyfills.bundle.js') }}" defer></script> -->
+    <!-- <script src="{{ url_for('static', filename='js/weko_items_ui/main.bundle.js') }}" defer></script> -->
+    
   {%- endblock javascript %}
 
   {%- block page_header %}
