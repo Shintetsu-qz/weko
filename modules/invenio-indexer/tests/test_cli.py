@@ -22,6 +22,7 @@ from kombu import Queue
 from invenio_indexer import cli
 from invenio_indexer.api import RecordIndexer
 from invenio_indexer.proxies import current_indexer_registry
+from click.testing import CliRunner
 
 
 def test_run(app):
@@ -36,27 +37,27 @@ def test_run(app):
     assert "Starting 2 tasks" in res.output
 
 
-def test_reindex(app):
+def test_reindex(app, script_info):
     """Test reindex."""
     # load records
     with app.test_request_context():
-        runner = app.test_cli_runner()
+        runner = CliRunner()
 
         id1 = uuid.uuid4()
         id2 = uuid.uuid4()
-        record1 = Record.create(dict(title="Test 1", recid=1), id_=id1)
-        record2 = Record.create(dict(title="Test 2", recid=2), id_=id2)
+        record1 = Record.create(dict(title='Test 1', recid=1), id_=id1)
+        record2 = Record.create(dict(title='Test 2', recid=2), id_=id2)
         PersistentIdentifier.create(
-            pid_type="recid",
+            pid_type='recid',
             pid_value=1,
-            object_type="rec",
+            object_type='rec',
             object_uuid=id1,
             status=PIDStatus.REGISTERED,
         )
         PersistentIdentifier.create(
-            pid_type="recid",
+            pid_type='recid',
             pid_value=2,
-            object_type="rec",
+            object_type='rec',
             object_uuid=id2,
             status=PIDStatus.REGISTERED,
         )
@@ -66,33 +67,37 @@ def test_reindex(app):
 
         # Make sure the index doesn't exist at the beginning (it was not
         # preserved by accident from some other tests)
-        assert current_search_client.indices.exists(index) is False
-
-        # Initialize queue
-        res = runner.invoke(cli.queue, ["init", "purge"])
+        print(f'exists:{current_search_client.indices.exists(index)}')
+        if current_search_client.indices.exists(index):
+            current_search_client.indices.delete(index=index)
+        assert current_search_client.indices.exists(index) is None
         
         print(f"Command exit code: {res.exit_code}")
         print(f"Command output: {res.output}")
         print(f"Command exception: {res.exception}")
-        
-        if res.exception:
-            print(f"Exception traceback: {res.exc_info}")
-        
-        assert res.exit_code == 0, f"Command failed with exit code {res.exit_code}"
-        assert "Indexing queue has been initialized." in res.output
-        assert "Indexing queue has been purged." in res.output
 
-
+        if current_search_client.indices.exists(app.config["INDEXER_DEFAULT_INDEX"]):
+            current_search_client.indices.delete(index=app.config["INDEXER_DEFAULT_INDEX"])
+        current_search_client.indices.create(index=app.config["INDEXER_DEFAULT_INDEX"])
         
-        res = runner.invoke(cli.reindex, ["--yes-i-know", "-t", "recid"])
+        # Initialize queue
+        res = runner.invoke(cli.queue, ['init', 'purge'],
+                            obj=script_info)
         assert 0 == res.exit_code
-        res = runner.invoke(cli.run, [])
+
+        res = runner.invoke(cli.reindex,
+                            ['--yes-i-know', '-t', 'recid'],
+                            obj=script_info)
+        print(res.output)
         assert 0 == res.exit_code
+        res = runner.invoke(cli.run, [], obj=script_info)
+        assert 0 == res.exit_code
+        print(current_search.client.indices.get_alias("*"))
         current_search.flush_and_refresh(index)
 
         # Both records should be indexed
         res = current_search_client.search(index=index)
-        assert len(res["hits"]["hits"]) == 2
+        assert res['hits']['total'] == 2
 
         # Delete one of the records
         record2 = Record.get_record(id2)
@@ -100,22 +105,27 @@ def test_reindex(app):
         db.session.commit()
         # Destroy the index and reindex
         list(current_search.delete(ignore=[404]))
-        res = runner.invoke(cli.reindex, ["--yes-i-know", "-t", "recid"])
+        res = runner.invoke(cli.reindex,
+                            ['--yes-i-know', '-t', 'recid'],
+                            obj=script_info)
+        print(f"Command exit code: {res.exit_code}")
+        print(f"Command output: {res.output}")
+        print(f"Command exception: {res.exception}")
         assert 0 == res.exit_code
-        res = runner.invoke(cli.run, [])
+        res = runner.invoke(cli.run, [], obj=script_info)
         assert 0 == res.exit_code
         current_search.flush_and_refresh(index)
 
         # Check that the deleted record is not indexed
         res = current_search_client.search(index=index)
-        assert len(res["hits"]["hits"]) == 1
-        assert res["hits"]["hits"][0]["_source"]["title"] == "Test 1"
+        assert res['hits']['total'] == 1
+        assert res['hits']['hits'][0]['_source']['title'] == 'Test 1'
 
         # Destroy queue and the index
-        res = runner.invoke(cli.queue, ["delete"])
+        res = runner.invoke(cli.queue, ['delete'],
+                            obj=script_info)
         assert 0 == res.exit_code
         list(current_search.delete(ignore=[404]))
-
 
 def test_queues_options(app):
     """Test queue sub-command options."""

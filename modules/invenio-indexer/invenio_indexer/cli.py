@@ -103,40 +103,48 @@ def run(delayed, concurrency, version_type=None, queue=None,
 
 
 @index.command()
-@click.option(
-    "--yes-i-know",
-    is_flag=True,
-    callback=abort_if_false,
-    expose_value=False,
-    prompt="Do you really want to reindex all records?",
-)
-@click.option("-t", "--pid-type", multiple=True, required=True)
+@click.option('--yes-i-know', is_flag=True, callback=abort_if_false,
+              expose_value=False,
+              prompt='Do you really want to reindex all records?')
+@click.option('-t', '--pid-type', multiple=True, required=True)
+@click.option('--include-delete', is_flag=True, default=False)
 @click.option('--skip-exists', is_flag=True, default=False)
 @click.option('--size',type=int,default=6000)
 @with_appcontext
-def reindex(pid_type,skip_exists,size):
+def reindex(pid_type, include_delete,skip_exists,size):
     """Reindex all records.
 
     :param pid_type: Pid type.
     """
-    click.secho("Sending records to indexing queue ...", fg="green")
+    click.secho('Sending records to indexing queue ...', fg='green')
 
-    query = (
-        x[0]
-        for x in PersistentIdentifier.query.filter_by(
-            object_type="rec", status=PIDStatus.REGISTERED
+    if include_delete:
+        query = PersistentIdentifier.query.filter_by(
+            object_type='rec'
+        ).filter(
+            PersistentIdentifier.status.in_(
+                [PIDStatus.REGISTERED, PIDStatus.DELETED]
+            )
         )
-    )
+    else:
+        query = PersistentIdentifier.query.filter_by(
+            object_type='rec', status=PIDStatus.REGISTERED
+        )
     query = query.filter(RecordMetadata.id==PersistentIdentifier.object_uuid)
-    query = query.filter(PersistentIdentifier.pid_type.in_(pid_type))
-    values = query.values(PersistentIdentifier.object_uuid)
+    query = query.filter(
+        PersistentIdentifier.pid_type.in_(pid_type)
+    )
+    current_app.logger.debug(query.statement.compile(dialect=postgresql.dialect(),compile_kwargs={"literal_binds": True}))
+    values = query.values(
+        PersistentIdentifier.object_uuid
+    )
     _values = (str(x[0]) for x in values)
-
     if skip_exists:
         index=current_app.config["SEARCH_INDEX_PREFIX"]+"weko-item-v1.0.0"
         query = {"query": {"bool": {"must":{"exists":{"field":"itemtype"}}}},"_source":["itemtype"],"sort" : [{"_id":"asc"}],"size":size}
         res = current_search_client.search(index=index,
                                            body=query)
+        total = res['hits']['total']
         hits = res['hits']['hits']
         ids = [x["_id"] for x in hits]
         while len(hits) == size:
@@ -149,17 +157,18 @@ def reindex(pid_type,skip_exists,size):
             hits = _res['hits']['hits']
             _ids = [x["_id"] for x in hits]
             ids.extend(_ids)
-
+        
         _tmp = set(_values)
         _ids = set(ids)
-        diff = list(_tmp - _ids)
+        diff = list(_tmp - _ids) 
         _values = (x for x in diff)
 
     _values, _values2 = itertools.tee(_values)
     cnt = sum(1 for _ in _values2)
     click.secho('Queueing {} records..'.format(cnt),fg='green')
     RecordIndexer().bulk_index(_values)
-    click.secho('Execute "run" command to process the queue!', fg="yellow")
+    click.secho('Execute "run" command to process the queue!',
+                fg='yellow')
 
 
 @index.group(chain=True)

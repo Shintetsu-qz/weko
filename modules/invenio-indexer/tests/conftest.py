@@ -25,6 +25,12 @@ from sqlalchemy_utils.functions import create_database, database_exists, drop_da
 from invenio_indexer import InvenioIndexer
 from kombu import Exchange, Queue
 from unittest.mock import patch
+from flask.cli import ScriptInfo
+
+@pytest.fixture()
+def script_info(app):
+    """Get ScriptInfo object for testing CLI."""
+    return ScriptInfo(create_app=lambda info: app)
 
 @patch.dict('os.environ', {'INVENIO_OPENSEARCH_USER': 'invenio', 'INVENIO_OPENSEARCH_PASSWORD': 'openpass123!'})
 @pytest.fixture()
@@ -34,9 +40,9 @@ def base_app(request):
     app = Flask("testapp", instance_path=instance_path)
     app.config.update(
         
-        BROKER_URL='amqp://guest:guest@172.19.0.4:5672/',
+        BROKER_URL='amqp://guest:guest@rabbitmq:5672/',
         CELERY_BROKER_URL=os.environ.get(
-            "BROKER_URL", "amqp://guest:guest@localhost:5672//"
+            "BROKER_URL", "amqp://guest:guest@rabbitmq:5672//"
         ),
         CELERY_TASK_ALWAYS_EAGER=True,
         CELERY_CACHE_BACKEND="memory",
@@ -46,8 +52,7 @@ def base_app(request):
         SECRET_KEY='CHANGE_ME',
         SECURITY_PASSWORD_SALT='CHANGE_ME_ALSO',
         INDEXER_DEFAULT_INDEX="records-default-v1.0.0",
-        INDEXER_MQ_QUEUE = Queue("indexer",
-                                 exchange=Exchange("indexer", type="direct"), routing_key="indexer",auto_delete=False,queue_arguments={"x-queue-type":"quorum"}),
+        INDEXER_MQ_QUEUE = Queue("indexer",exchange=Exchange("indexer", type="direct"), routing_key="indexer",auto_delete=False,queue_arguments={"x-queue-type":"classic"}),
         # SQLALCHEMY_DATABASE_URI=os.environ.get(
         #     "SQLALCHEMY_DATABASE_URI", "sqlite:///test.db"
         # ),
@@ -68,7 +73,7 @@ def base_app(request):
     InvenioRecords(app)
     search = InvenioSearch(app, entry_point_group=None)
     search.register_mappings("records", "tests.data")
-
+    
     with app.app_context():
         if not database_exists(str(db.engine.url)):
             create_database(str(db.engine.url))

@@ -144,7 +144,7 @@ def test_open_search_detail_data(app, db, db_index, render, form, mapping, hit, 
         item_type_id=_item_type.id,
         mapping=json_data(mapping)
     )
-    _search_result = {'hits': {'total': 1, 'hits': [json_data(hit)]}}
+    _search_result = {'hits': {'total': {"value": 1,"relation": "eq"}, 'hits': [json_data(hit)]}}
     data = OpenSearchDetailData(fetcher, _search_result, 'rss')
     with app.test_request_context():
         assert data.output_open_search_detail_data()
