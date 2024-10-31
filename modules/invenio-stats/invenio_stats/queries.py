@@ -25,15 +25,21 @@ from .errors import InvalidRequestInputError
 class Query(object):
     """Search query."""
 
-    def __init__(self, name, index, client=None, *args, **kwargs):
+    def __init__(self, name, index, client=None, event_type=None,*args, **kwargs):
         """Constructor.
 
         :param index: queried index.
         :param client: search client used to query.
         """
         self.name = name
+        index = "tenant1-stats-search"
         self.index = build_alias_name(index)
         self.client = client or current_search_client
+        self.event_type = event_type
+    
+    def set_filter_event_type(self,query):
+        query.filter("term",event_type=self.event_type)
+        return query
 
     def extract_date(self, date):
         """Extract date from string if necessary.
@@ -137,7 +143,7 @@ class DateHistogramQuery(Query):
             if end_date is not None:
                 time_range["lte"] = end_date.isoformat()
             agg_query = agg_query.filter("range", **{self.time_field: time_range})
-
+        agg_query = self.set_filter_event_type(agg_query)
         for modifier in self.query_modifiers:
             agg_query = modifier(agg_query, **kwargs)
 

@@ -437,7 +437,7 @@ STATS_QUERIES = {
     'get-celery-task-report': {
         "cls": TermsQuery,
         "params": dict(
-                index='{}-stats-celery-task'.format(search_index_prefix),
+                index='stats-index',
                 aggregated_fields=['task_id', 'task_name', 'start_time',
                                    'end_time', 'total_records', 'task_state'],
                 required_filters=dict(

@@ -216,6 +216,9 @@ class StatAggregator(object):
                 # Filter for the specific interval (hour, day, month)
                 "term",
                 timestamp=rounded_dt,
+            ).filter(
+                "term",
+                event_type=self.event
             )
             # we're only interested in the aggregated results but not the search hits,
             # so we tell the search to ignore them to save some bandwidth
