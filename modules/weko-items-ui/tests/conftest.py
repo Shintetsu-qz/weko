@@ -23142,7 +23142,7 @@ def make_record(db, indexer, i, files, thumbnail=None):
         str(i),
         object_type="rec",
         object_uuid=rec_uuid,
-        status=PIDStatus.REGISTERED,
+        status=PIDStatus.RESERVED,
     )
     depid = PersistentIdentifier.create(
         "depid",
@@ -23154,21 +23154,21 @@ def make_record(db, indexer, i, files, thumbnail=None):
     parent = None
     doi = None
     hdl = None
-    recid_v1 = PersistentIdentifier.create(
-        "recid",
-        str(i + 0.1),
-        object_type="rec",
-        object_uuid=rec_uuid,
-        status=PIDStatus.REGISTERED,
-    )
+    # recid_v1 = PersistentIdentifier.create(
+    #     "recid",
+    #     str(i + 0.1),
+    #     object_type="rec",
+    #     object_uuid=rec_uuid,
+    #     status=PIDStatus.RESERVED,
+    # )
     rec_uuid2 = uuid.uuid4()
-    depid_v1 = PersistentIdentifier.create(
-        "depid",
-        str(i + 0.1),
-        object_type="rec",
-        object_uuid=rec_uuid2,
-        status=PIDStatus.REGISTERED,
-    )
+    # depid_v1 = PersistentIdentifier.create(
+    #     "depid",
+    #     str(i + 0.1),
+    #     object_type="rec",
+    #     object_uuid=rec_uuid2,
+    #     status=PIDStatus.REGISTERED,
+    # )
     parent = PersistentIdentifier.create(
         "parent",
         "parent:{}".format(i),
@@ -23176,12 +23176,11 @@ def make_record(db, indexer, i, files, thumbnail=None):
         object_uuid=rec_uuid2,
         status=PIDStatus.REGISTERED,
     )
-
-    h1 = PIDNodeVersioning(parent=parent)
-    h1.insert_child(child=recid)
-    h1.insert_child(child=recid_v1)
-    RecordDraft.link(recid, depid)
-    RecordDraft.link(recid_v1, depid_v1)
+    h1 = PIDNodeVersioning(parent)
+    h1.insert_draft_child(recid)
+    # h1.insert_draft_child(recid_v1)
+    # RecordDraft.link(recid, depid)
+    # RecordDraft.link(recid_v1, depid_v1)
 
     if i % 2 == 1:
         doi = PersistentIdentifier.create(
