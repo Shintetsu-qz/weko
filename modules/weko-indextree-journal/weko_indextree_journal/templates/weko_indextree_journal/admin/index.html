@@ -36,6 +36,7 @@
 {%- endblock css %}
 
 {%- block javascript %}
+<script src="{{ url_for('static', filename='js/weko_indextree_journal/invenio-files-js.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/weko_indextree_journal/inline.bundle.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/weko_indextree_journal/polyfills.bundle.js') }}" defer></script>
 <script src="{{ url_for('static', filename='js/weko_indextree_journal/main.bundle.js') }}" defer></script>
@@ -98,9 +99,9 @@
                 <input type="hidden" id="journal_id" value="{{journal_id}}">
                 <input type="hidden" id="right_index_id" value="{{index_id}}">
                 <invenio-records-form
-                  form-templates='{{ config.DEPOSIT_FORM_TEMPLATES | tojson }}'
-                  form-templates-base="{{ url_for('static', filename=config.DEPOSIT_FORM_TEMPLATES_BASE) }}"
-                  template="{{ url_for('static', filename=config.DEPOSIT_UI_JSTEMPLATE_FORM) }}">
+                  form-templates='{{{"default": "default.html", "fieldset": "fieldset.html", "array": "array.html", "radios_inline": "radios_inline.html", "radios": "radios.html", "select": "select.html", "button": "button.html", "textarea": "textarea.html"}|tojson}}'
+                  form-templates-base="/static/templates/invenio_deposit/decorators"
+                  template="/static/templates/invenio_deposit/decorators/form.html">
                 </invenio-records-form>
                 <div class="row">
                   <div class="col-sm-9 col-sm-offset-4 text-center">

@@ -134,4 +134,9 @@ setup(
         'Programming Language :: Python :: 3.5',
         'Development Status :: 1 - Planning',
     ],
+    package_data={
+        'weko_indextree_journal': [
+            'static/templates/invenio_deposit/decorators/*.html,
+        ],
+    },
 )
