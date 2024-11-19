@@ -19,6 +19,7 @@ import $ from 'jquery';
 
             // page init
             $scope.initData = function (data) {
+                alert(data);
                 let json_obj = angular.fromJson(data)
                 db_data = json_obj.condition_setting;
 

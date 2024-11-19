@@ -109,25 +109,26 @@ function createRow(id, count, start_time, end_time, status, counter, errmsg, req
 }
 
 function processLogs() {
-  setTimeout(() => {
-    document.location.reload();
-  }, 5000);
-  let logs_url = window.location.href.replace('details', 'get_logs')
-  $.getJSON(logs_url, function(data) {
-    for (i = 0; i < data.length; ++i) { 
-        createRow(
-            data[i]['id'],
-            i + 1, 
-            data[i]['start_time'],
-            data[i]['end_time'],
-            data[i]['status'],
-            data[i]['counter'],
-            data[i]['errmsg'],
-            data[i]['requrl']
-        );
-    }
-  })
+    let logs_url = window.location.href.replace('details', 'get_logs');
+    $.getJSON(logs_url, function(data) {
+        let table = document.getElementById('logs_table').getElementsByTagName('tbody')[0];
+        table.innerHTML = ''; // 清空表格
+        for (i = 0; i < data.length; ++i) { 
+            createRow(
+                data[i]['id'],
+                i + 1, 
+                data[i]['start_time'],
+                data[i]['end_time'],
+                data[i]['status'],
+                data[i]['counter'],
+                data[i]['errmsg'],
+                data[i]['requrl']
+            );
+        }
+    });
 }
+
+setInterval(processLogs, 2000);
 
 function check_detail(id) {
     let logs_url = window.location.href.replace('details', 'get_log_detail/' + id.toString())

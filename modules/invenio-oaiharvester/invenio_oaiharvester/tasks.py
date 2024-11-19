@@ -368,12 +368,17 @@ def link_error_handler(request, exc, traceback):
 
 def is_harvest_running(id, task_id):
     """Check harvest running."""
-    inspect = current_celery_app.control.inspect()
-    actives = inspect().active()
+    # inspect = current_celery_app.control.inspect()
+    inspect = current_app.extensions.get('invenio-celery').celery.control.inspect()
+    actives = inspect.active()
     for worker in actives:
         for task in actives[worker]:
             if task['name'] == 'invenio_oaiharvester.tasks.run_harvesting':
+                current_app.logger.info(f"id:{id} {type(id)}")
+                current_app.logger.info(task_id)
+                current_app.logger.info(task['args'][0] == str(id) and task['id'] != task_id)
                 if task['args'][0] == str(id) and task['id'] != task_id:
+                    current_app.logger.info("ttttttttttttttttttttttttttttt")
                     return True
     return False
 
@@ -381,7 +386,9 @@ def is_harvest_running(id, task_id):
 @ shared_task
 def run_harvesting(id, start_time, user_data, request_info): 
     """Run harvest."""
+    current_app.logger.info(11111111111111111111111111111)
     def dump(setting):
+        current_app.logger.info(22222222222222222222222222222)
         setting_json = {}
         setting_json['repository_name'] = setting.repository_name
         setting_json['base_url'] = setting.base_url
@@ -397,6 +404,7 @@ def run_harvesting(id, start_time, user_data, request_info):
         return setting_json
 
     if is_harvest_running(id, run_harvesting.request.id):
+        current_app.logger.info(333333333333333333333333333333333333)
         return ({'task_state': 'SUCCESS',
                  'task_id': run_harvesting.request.id},
                 user_data)
@@ -408,6 +416,9 @@ def run_harvesting(id, start_time, user_data, request_info):
     try:
         harvesting = HarvestSettings.query.filter_by(id=id).first()
         harvesting.task_id = current_task.request.id
+        current_app.logger.info(f"current_task.request.id:{current_task.request.id}")
+        current_app.logger.info(harvesting)
+        
         rtoken = harvesting.resumption_token
         counter = {}
         try:
@@ -431,8 +442,10 @@ def run_harvesting(id, start_time, user_data, request_info):
             harvest_log.setting = dump(harvesting)
             db.session.commit()
         except Exception as e:
+            current_app.logger.info(5555555555555555555555555555)
             db.session.rollback()
             current_app.logger.error(e)
+        current_app.logger.info(9999999999999999999999999999999999000000000000000000009999)
     
         if int(harvesting.auto_distribution):
             sets = list_sets(harvesting.base_url)
@@ -446,7 +459,10 @@ def run_harvesting(id, start_time, user_data, request_info):
             nonlocal pause
             pause = True
         signal.signal(signal.SIGTERM, sigterm_handler)
+        current_app.logger.info(99999999999999999999999999999999922222222222222222222999999)
+        
         while True:
+            current_app.logger.info(9999999999999999999999999999999999999111111111111111111)
             records, rtoken = harvester_list_records(
                 harvesting.base_url,
                 harvesting.from_date.__str__() if harvesting.from_date and not rtoken else None,
@@ -456,6 +472,9 @@ def run_harvesting(id, start_time, user_data, request_info):
                 rtoken)
             current_app.logger.info('[{0}] [{1}]'.format(
                                     0, 'Processing records'))
+            current_app.logger.info(99999999999999999999999999999999922222222222222222222999999)
+            current_app.logger.info(rtoken)
+            
             for record in records:
                 try:
                     process_item(record, harvesting, counter, request_info)
@@ -466,7 +485,11 @@ def run_harvesting(id, start_time, user_data, request_info):
                         'Error occurred while processing harvesting item\n' + str(ex))
                     db.session.rollback()
                     event_counter('error_items', counter)
+            current_app.logger.info(99999999999999999999999999999999999999999999999999999)
+            current_app.logger.info(rtoken)
+            
             harvesting.resumption_token = rtoken
+            
             db.session.commit()
             if not rtoken:
                 harvest_log.status = 'Successful'
@@ -475,6 +498,7 @@ def run_harvesting(id, start_time, user_data, request_info):
                 harvest_log.status = 'Suspended'
                 break
     except Exception as ex:
+        current_app.logger.info(66666666666666666666666666666)
         db.session.rollback()
         harvest_log.status = 'Failed'
         current_app.logger.error(str(ex))

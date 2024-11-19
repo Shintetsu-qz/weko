@@ -166,6 +166,7 @@ class SearchSetting(object):
 
 def get_search_detail_keyword(str):
     """Get search detail keyword."""
+    print(222222222222222222222222222222222222222222)
     res = sm.get()
     options = None
     key_options = dict()

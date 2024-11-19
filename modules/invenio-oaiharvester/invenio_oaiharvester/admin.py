@@ -125,9 +125,12 @@ class HarvestSettingView(ModelView):
     @expose('/pause/')
     def pause(self):
         """Pause harvesting."""
+        print("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
+        print(request.args.get('id'))
         harvesting = HarvestSettings.query.filter_by(
             id=request.args.get('id')).first()
-        celery.current_app.control.revoke(harvesting.task_id, terminate=True)
+        print(harvesting.task_id)
+        celery.current_app.control.revoke(harvesting.task_id)
         return redirect(url_for('harvestsettings.details_view',
                                 id=request.args.get('id')))
 
