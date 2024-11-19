@@ -108,25 +108,47 @@ function createRow(id, count, start_time, end_time, status, counter, errmsg, req
   }
 }
 
+let previousData = null;
 function processLogs() {
-  setTimeout(() => {
-    document.location.reload();
-  }, 5000);
   let logs_url = window.location.href.replace('details', 'get_logs')
   $.getJSON(logs_url, function(data) {
-    for (i = 0; i < data.length; ++i) { 
-        createRow(
-            data[i]['id'],
-            i + 1, 
-            data[i]['start_time'],
-            data[i]['end_time'],
-            data[i]['status'],
-            data[i]['counter'],
-            data[i]['errmsg'],
-            data[i]['requrl']
-        );
-    }
-  })
+    let table = document.getElementById('logs_table').getElementsByTagName('tbody')[0];
+        table.innerHTML = '';
+        let shouldRefresh = false;
+        if (previousData === null) {
+            previousData = data;
+        }
+        if (data.length !== previousData.length) {
+            shouldRefresh = true;
+        } else {
+            for (let i = 0; i < data.length; i++) {
+                if (
+                    data[i]['status'] !== previousData[i]['status'] ||
+                    data[i]['counter']['processed_items'] !== previousData[i]['counter']['processed_items']
+                ) {
+                    shouldRefresh = true;
+                    break;
+                }
+            }
+        }
+    for (i = 0; i < data.length; ++i) {
+            createRow(
+                data[i]['id'],
+                i + 1, 
+                data[i]['start_time'],
+                data[i]['end_time'],
+                data[i]['status'],
+                data[i]['counter'],
+                data[i]['errmsg'],
+                data[i]['requrl']
+            );
+        }
+        previousData = data;
+
+        if (shouldRefresh) {
+            location.reload();
+        }
+    })
 }
 
 function check_detail(id) {
