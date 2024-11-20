@@ -233,7 +233,7 @@ class Deposit(Record):
 
             data['_deposit']['created_by'] = creator_id
 
-        return super(Deposit, cls).create(data, id_=id_)
+        return super(Deposit, cls).create(data, with_bucket=False, id_=id_)
 
     @contextmanager
     def _process_files(self, record_id, data):
@@ -501,6 +501,7 @@ class Deposit(Record):
 
     def _create_bucket(self):
         """Override bucket creation."""
+        print(898989898989789795413)
         return Bucket.create(storage_class=current_app.config[
             'DEPOSIT_DEFAULT_STORAGE_CLASS'
         ])
