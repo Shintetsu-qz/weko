@@ -112,7 +112,39 @@ def test_events_delete_restore(app, script_info, es, event_queues):
         obj=script_info)
     assert result
 
-
+    
+def test_events_restore(app, script_info, es, db, event_queues):
+    from datetime import datetime
+    with app.app_context():
+        record_data ={
+            "created": "2024-11-21 04:42:12.4283",
+            "updated": "2024-11-21 04:42:12.428305",
+            "_id": "2024-11-21T04:42:00-0234be653d124f271b439d9a3eacdbd9a5d556e9",
+            "_index": "test-events-stats-index",
+            "_source": {"country": None, "hostname": "None", "is_robot": False, "referrer": "https://192.168.56.107/login/?next=%2F", "timestamp": "2024-11-27T02:00:26", "unique_id": "5a5ca75a-9ae1-32b4-852f-6e7f7a309529", "event_type": "top-view", "visitor_id": "083cba242a91dcfff104f9f129440cf04d61045901b4519d246539d7", "remote_addr": "192.168.56.1", "is_restricted": False, "site_license_flag": False, "site_license_name": "", "unique_session_id": "fc5b0343a01f4a4a15127f6fcd6151e85006ceb3a2534407e168500d", "updated_timestamp": "2024-11-27T02:01:23.157856+00:00"},
+            "date": datetime.strptime("2024-11-21 04:42:08", "%Y-%m-%d %H:%M:%S")
+        }
+        query = dsl.Search(using=es, index="test-events-stats-index").filter('term', _id="2024-11-21T04:42:00-0234be653d124f271b439d9a3eacdbd9a5d556e9")
+        from invenio_stats.models import StatsEvents
+        StatsEvents.save(record_data,True)
+        res = query.execute()
+        print(res.hits.total.value)
+        assert res.hits.total.value==0
+        runner = CliRunner()
+        result = runner.invoke(
+            stats, ["events", "restore", "top-view"],
+            obj=script_info)
+        print(result.output)
+        import time
+        time.sleep(10)
+        # res = dsl.Search(using=es, index="test-events-stats-index").filter('term', _id="2024-11-21T04:42:00-0234be653d124f271b439d9a3eacdbd9a5d556e9").execute()
+        query = dsl.Search(using=es, index="test-events-stats-index").filter('term', _id="2024-11-21T04:42:00-0234be653d124f271b439d9a3eacdbd9a5d556e9")
+        res = query.execute()
+        for hit in res:
+            print(hit.to_dict())
+        print(res.hits.total.value)
+        assert res.hits.total.value==1
+        
 # def _aggregations_process(aggregation_types=None, start_date=None, end_date=None, update_bookmark=False, eager=False):
 # .tox/c1/bin/pytest --cov=invenio_stats tests/test_cli.py::test_aggregations_process -v -s -vv --cov-branch --cov-report=term --cov-config=tox.ini --basetemp=/code/modules/invenio-stats/.tox/c1/tmp
 @pytest.mark.parametrize(

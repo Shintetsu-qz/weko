@@ -537,32 +537,6 @@ def es(app):
             index='{}stats-index'.format(app.config['SEARCH_INDEX_PREFIX']),
             body=aggr_item_create_mapping
         )
-
-        event_list = ('celery-task', 'item-create', 'top-view',
-                      'record-view', 'file-download', 'file-preview', 'search')
-        for event_name in event_list:
-            current_search_client.indices.put_alias(
-                index="{}events-stats-index".format(
-                    app.config['SEARCH_INDEX_PREFIX']),
-                name="{}events-stats-{}".format(
-                    app.config['SEARCH_INDEX_PREFIX'], event_name),
-                body={
-                    "is_write_index": True,
-                    "filter": {"term": {"event_type": event_name}}
-                }
-            )
-
-            current_search_client.indices.put_alias(
-                index="{}stats-index".format(
-                    app.config['SEARCH_INDEX_PREFIX']),
-                name="{}stats-{}".format(
-                    app.config['SEARCH_INDEX_PREFIX'], event_name),
-                body={
-                    "is_write_index": True,
-                    "filter": {"term": {"event_type": event_name}}
-                }
-            )
-
         try:
             yield current_search_client
         finally:

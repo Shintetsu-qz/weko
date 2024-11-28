@@ -300,17 +300,34 @@ def stats_reindex(stats_types, stats_prefix):
         print("### reindex: {}".format(index))
         from_reindex = index
         to_reindex = f"{prefix}-{stats_prefix}-index"
-        event_type = replace_prefix_index(index).replace(f"{stats_prefix}-","")
+        event_type = replace_prefix_index(index).replace(f"{stats_prefix}-", "")
         body = {
             "source": {"index": from_reindex},
             "dest": {"index": to_reindex},
             "script": {
-                "source": f"ctx._source['event_type'] = '{event_type}'",
-                "lang": "painless"
+                "source": """
+                    // Update the event_type field
+                    ctx._source['event_type'] = params.event_type;
+
+                    // Check if the event_type is file-download or file-preview
+                    if (params.event_type == 'file-download' || params.event_type == 'file-preview') {
+                        // Append event_type to id
+                        String originalId = ctx._id;
+                        ctx._id = originalId + '-' + params.event_type;
+
+                        // Append event_type to unique_id if exists
+                        if (ctx._source.containsKey('unique_id')) {
+                            String originalUniqueId = ctx._source['unique_id'];
+                            ctx._source['unique_id'] = originalUniqueId + '-' + params.event_type;
+                        }
+                    }
+                """,
+                "lang": "painless",
+                "params": {"event_type": event_type}
             }
         }
-        res = requests.post(url=reindex_url,json=body,**req_args)
-        if res.status_code!=200:
+        res = requests.post(url=reindex_url, json=body, **req_args)
+        if res.status_code != 200:
             print("### raise error: reindex: {}".format(index))
             raise Exception(res.text)
 

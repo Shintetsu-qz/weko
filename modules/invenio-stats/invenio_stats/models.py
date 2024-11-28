@@ -78,6 +78,41 @@ class _StataModelBase(Timestamp):
         query = cls.get_by_date(query, start_date, end_date)
         query = query.filter(cls.index.ilike(_index + "%"))
         return query.all()
+    
+    @classmethod
+    def get_by_event_type(
+        cls, _index: str, event_type, start_date: datetime = None, end_date: datetime = None
+    ) -> List:
+        """
+        Get stats data by event type, supporting both old and new versions of data.
+
+        :param _index: event index for filtering.
+        :param event_type: the target event type (e.g., 'file-download').
+        :param start_date: start date for filtering.
+        :param end_date: end date for filtering.
+        :return: List of filtered data.
+        """
+        from sqlalchemy import func,or_
+        
+        beforeindex =_index.replace("index","") + event_type
+        
+        query = db.session.query(cls)
+        query = cls.get_by_date(query, start_date, end_date)
+        
+        # index ILIKE 'tenant1-events-stats-file-download'
+        condition_1 = cls.index.ilike(beforeindex)
+        
+        # source->>'event_type' = 'top-view'
+        condition_2 = cls.index.ilike(_index + "%") & (func.jsonb_extract_path_text(cls.source, "event_type") == event_type)
+
+        query = query.filter(
+            or_(
+                condition_1,
+                condition_2
+            )
+        )
+        
+        return query.all()
 
     @classmethod
     def get_by_source_id(
@@ -146,7 +181,7 @@ class _StataModelBase(Timestamp):
                     'source_id': data_object.get("_id"),
                     'index': data_object.get("_index"),
                     'type': data_object.get("_type"),
-                    'source': json.dumps(data_object.get("_source")),
+                    'source': data_object.get("_source"),
                     'date': date
                 }
             else:

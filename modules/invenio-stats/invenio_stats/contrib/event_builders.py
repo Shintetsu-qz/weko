@@ -77,6 +77,7 @@ def file_download_event_builder(event, sender_app, obj=None, **kwargs):
                 "is_billing_item": obj.is_billing_item,
                 "billing_file_price": obj.billing_file_price,
                 "user_group_list": obj.user_group_list,
+                "event_type": "file-download",
                 # Who:
                 **get_user()
             }
@@ -110,6 +111,7 @@ def file_preview_event_builder(event, sender_app, obj=None, **kwargs):
                 "is_billing_item": obj.is_billing_item,
                 "billing_file_price": obj.billing_file_price,
                 "user_group_list": obj.user_group_list,
+                "event_type": "file-preview",
                 # Who:
                 **get_user()
             }
@@ -131,13 +133,14 @@ def build_celery_task_unique_id(doc):
 
 def build_file_unique_id(doc):
     """Build file unique identifier."""
-    key = "{0}_{1}_{2}_{3}".format(
+    key = "{0}_{1}_{2}_{3}_{4}".format(
         doc["bucket_id"],
         doc["file_id"],
         doc["remote_addr"],
-        doc["unique_session_id"]
+        doc["unique_session_id"],
+        doc["event_type"]
     )
-    doc["unique_id"] = str(uuid.uuid3(uuid.NAMESPACE_DNS, key))
+    doc["unique_id"] = str(uuid.uuid3(uuid.NAMESPACE_DNS, key)) + "-" + doc["event_type"]
     doc["hostname"] = "{}".format(resolve_address(doc["remote_addr"]))
 
     return doc

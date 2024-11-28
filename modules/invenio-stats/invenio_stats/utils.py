@@ -1364,9 +1364,55 @@ class StatsCliUtil:
             data = self.__get_stats_data_from_db(StatsEvents)
         else:
             data = self.__get_stats_data_from_db(StatsAggregation)
-        self.__cli_restore_es_data_from_db(data)
+        modified_data = self.__modify_restore_data(data)    
+        self.__cli_restore_es_data_from_db(modified_data)
 
 
+    def __modify_restore_data(self, data: Generator) -> Generator:
+        """Modify restore data to meet the new requirements.
+
+        :param data: Original restore data from DB.
+        :return: Modified data generator.
+        """
+        search_index_prefix = current_app.config["SEARCH_INDEX_PREFIX"].strip("-")
+        stats_index = search_index_prefix + "-stats-index"
+        event_stats_index = search_index_prefix + "-events-stats-index"
+        
+        for doc in data:
+            import json
+            index = doc["_index"]
+            document = doc["_source"]
+            
+            if isinstance(document, str):
+                try:
+                    document = json.loads(document)
+                except json.JSONDecodeError:
+                    raise ValueError("The provided _index string is not valid JSON.")
+            elif not isinstance(document, dict):
+                raise TypeError("The provided _index must be either a string or a dictionary.")
+            
+            event_type = document.get("event_type", None)
+
+            if not event_type:
+                if self.cli_type==0:
+                    # tenant1-events-stats-file-download
+                    event_type = "-".join(index.split("-")[3:])
+                    doc["_index"] = event_stats_index
+                elif self.cli_type==1:
+                    # tenant1-stats-file-download
+                    event_type = "-".join(index.split("-")[2:])
+                    doc["_index"] = stats_index
+
+                if event_type in {"file-download", "file-preview"}:
+                    doc["_id"] = f"{doc['_id']}-{event_type}"
+                    if "unique_id" in document:
+                        document["unique_id"] = f"{document['unique_id']}-{event_type}"
+                    else:
+                        current_app.logger.error(f"[{event_type}] document has no unique_id field.")
+                document["event_type"] = event_type
+            doc["_source"] = document
+            yield doc
+        
     def __prepare_es_indexes(self):
         """Prepare ElasticSearch index data.
 
@@ -1408,7 +1454,7 @@ class StatsCliUtil:
     def __get_data_from_db_by_stats_type(self, data_model):
         rtn_data = []
         for _index, _type in self.__prepare_es_indexes():
-            data = data_model.get_by_index(_index, self.start_date, self.end_date)
+            data = data_model.get_by_event_type(_index, _type, self.start_date, self.end_date)
             if data:
                 rtn_data.extend(data)
         return rtn_data
