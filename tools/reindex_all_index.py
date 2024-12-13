@@ -302,22 +302,20 @@ def stats_reindex(stats_types, stats_prefix):
         to_reindex = f"{prefix}-{stats_prefix}-index"
         event_type = replace_prefix_index(index).replace(f"{stats_prefix}-","")
         # Get size of from_reindex and to_reindex
-        def get_index_size(index):
-            size_url = f"{base_url}{index}/_stats/store"
+        def get_index_size(alias):
+            size_url = f"{base_url}{alias}/_stats/store"
             res = requests.get(url=size_url, **req_args)
             if res.status_code == 200:
                 stats = res.json()
-                return stats['indices'][index]['primaries']['store']['size_in_bytes']
+                for real_index, data in stats['indices'].items():
+                    return data['total']['store']['size_in_bytes']
             else:
-                print("### raise error: failed to get size for index: {}".format(index))
+                print("### raise error: failed to get size for alias: {}".format(alias))
                 raise Exception(res.text)
 
         from_size = get_index_size(from_reindex)
         print(from_size)
-        try:
-            to_size = get_index_size(to_reindex)
-        except Exception:
-            to_size = 0  # If the destination index does not exist yet
+        to_size = get_index_size(to_reindex)
 
         print(to_size)
 
