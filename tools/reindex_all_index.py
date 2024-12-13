@@ -313,14 +313,18 @@ def stats_reindex(stats_types, stats_prefix):
                 raise Exception(res.text)
 
         from_size = get_index_size(from_reindex)
+        print(from_size)
         try:
             to_size = get_index_size(to_reindex)
         except Exception:
             to_size = 0  # If the destination index does not exist yet
 
+        print(to_size)
+
         max_size = 5
         # mb to byte
         size_limit = max_size * 1024 * 1024
+        print(size_limit)
         # Check if rollover is needed
         if from_size + to_size > size_limit:
             print("### Performing rollover for index: {}".format(to_reindex))
