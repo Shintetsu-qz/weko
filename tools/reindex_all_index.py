@@ -35,7 +35,7 @@ bulk_headers = {"Content-Type":"application/x-ndjson"}
 req_args = {"headers":headers,"verify":verify}
 bulk_req_args = {"headers":bulk_headers,"verify":verify}
 if auth:
-    req_args["auth"] = auth 
+    req_args["auth"] = auth
     bulk_req_args["auth"] = auth
 
 mapping_files = {
@@ -73,7 +73,7 @@ delete_target_stats = [] # 削除対象となるinvenio_statsのindexリスト
 for index in indexes:
     aliases = indexes[index].get("aliases",{})
     indexes_alias[index] = aliases
-    
+
     index_tmp = replace_prefix_index(index)
     if index_tmp not in stats_indexes:
         continue
@@ -99,14 +99,14 @@ for index in indexes_alias:
         continue
     path_data = mapping_files[index_tmp]
     file_path = os.path.join(modules_dir, path_data)
-    
+
     if not os.path.isfile(file_path):
         print("## not exist file: {}".format(file_path))
         continue
 
     with open(file_path, "r") as json_file:
         mappings[index] = json.loads(json_file.read())
-        
+
 print("# get template from json files")
 for index, path in template_files.items():
     file_path = os.path.join(modules_dir, path)
@@ -134,10 +134,10 @@ percolator_body = {"properties": {"query": {"type": "percolator"}}}
 for index, mapping in mappings.items():
     print("# start reindex: {}".format(index))
     tmpindex = index+"-tmp"
-    
+
     # target index is weko-item-v1.0.0
     is_weko_item = re.sub(f"^{prefix}-", "", index) == "weko-item-v1.0.0"
-    
+
     # target index mapping
     base_index_definition = mappings[index]
 
@@ -146,11 +146,11 @@ for index, mapping in mappings.items():
     default_refresh_interval = base_index_definition.get("settings",{}).get("index",{}).get("refresh_interval","1s")
     performance_setting_body = {"index": {"number_of_replicas": 0, "refresh_interval": "-1"}}
     restore_setting_body = {"index": {"number_of_replicas": defalut_number_of_replicas, "refresh_interval": default_refresh_interval}}
-    
+
     # body for reindex
     json_data_to_tmp = {"source":{"index":index},"dest":{"index":tmpindex}}
     json_data_to_dest = {"source":{"index":tmpindex},"dest":{"index":index}}
-    
+
     # body for setting alias
     json_data_set_aliases = {
         "actions":[]
@@ -166,20 +166,20 @@ for index, mapping in mappings.items():
         res = requests.put(base_url+tmpindex+"?pretty",json=base_index_definition,**req_args)
         if res.status_code!=200:
             raise Exception(res.text)
-        
+
         if is_weko_item:
             res = requests.put(base_url+tmpindex+"/_mapping/",json=percolator_body,**req_args)
-            
+
             if res.status_code!=200:
                 raise Exception(res.text)
         print("## create tmp index")
-        
+
         # 高速化のための設定
         res = requests.put(base_url+tmpindex+"/_settings?pretty",json=performance_setting_body,**req_args)
         if res.status_code!=200:
             raise Exception(res.text)
         print("## speed-up setting for tmp_index")
-        
+
         # 一時保存用インデックスに元のインデックスの再インデックス
         res = requests.post(url=reindex_url,json=json_data_to_tmp,**req_args)
         if res.status_code!=200:
@@ -191,7 +191,7 @@ for index, mapping in mappings.items():
         if res.status_code!=200:
             raise Exception(res.text)
         print("## delete old index")
-        
+
         # 新しくインデックス作成
         res = requests.put(base_url+index+"?pretty",json=base_index_definition,**req_args)
 
@@ -200,26 +200,26 @@ for index, mapping in mappings.items():
             if res.status_code!=200:
                 raise Exception(res.text)
         print("## create new index")
-        
+
         # 高速化のための設定
         res = requests.put(base_url+index+"/_settings?pretty",json=performance_setting_body,**req_args)
         if res.status_code!=200:
             raise Exception(res.text)
         print("## speed-up setting for new index")
-        
+
         # aliasの設定
         if json_data_set_aliases["actions"]:
             res = requests.post(base_url+"_aliases",json=json_data_set_aliases,**req_args)
             if res.status_code!=200:
                 raise Exception(res.text)
         print("## setting alias for new index")
-        
+
         # アイテムの再挿入
         res = requests.post(url=reindex_url,json=json_data_to_dest,**req_args)
         if res.status_code!=200:
             raise Exception(res.text)
         print("## put into new index")
-        
+
         # 高速化のための設定を元に戻す
         res = requests.put(base_url+index+"/_settings?pretty",json=restore_setting_body,**req_args)
         if res.status_code!=200:
@@ -230,7 +230,7 @@ for index, mapping in mappings.items():
         if res.status_code!=200:
             raise Exception(res.text)
         print("## delete tmp_index")
-        
+
         print("# end reindex: {}\n".format(index))
     except Exception as e:
         import traceback
@@ -328,6 +328,22 @@ def stats_reindex(stats_types, stats_prefix):
         if res.status_code!=200:
             print("### raise error: reindex: {}".format(index))
             raise Exception(res.text)
+
+        aliases = indexes_alias.get(index, {})
+
+        for alias in aliases:
+            if "-stats-" in alias:
+
+                rollover_url = base_url + "{}/_rollover".format(alias)
+                rollover_body = {
+                    "conditions": {
+                        "max_size": "50gb"
+                    }
+                }
+                res = requests.post(url=rollover_url,json=rollover_body,**req_args)
+                if res.status_code!=200:
+                    print("### raise error: reindex: {}".format(index))
+                    raise Exception(res.text)
 
 event_stats_types = [
     "events-stats-celery-task",

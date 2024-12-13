@@ -25,6 +25,10 @@ module_dir = "/code/modules/"
 base_url = f"https://{host}:9200/"
 template_url = base_url + "_template/{}"
 ism_url = base_url + "_plugins/_ism/policies/weko_stats_policy"
+ism_add_url = base_url + "_plugins/_ism/add/{}"
+settings_url = base_url + "{}/_settings"
+close_url = base_url + "{}/_close"
+open_url = base_url + "{}/_open"
 
 verify = False
 headers = {"Content-Type":"application/json"}
@@ -65,18 +69,26 @@ try:
     ism_body = {
         "policy": {
             "description": "Rollover policy based on max size",
-            "default_state": "hot",
+            "default_state": "rollover",
             "states": [
             {
-                "name": "hot",
+                "name": "rollover",
                 "actions": [
                 {
                     "rollover": {
-                    "min_size": "50gb"
+                    "min_size": "10mb"
                     }
                 }
                 ]
             }
+            ],
+            "ism_template": [
+                {
+                    "index_patterns": [
+                        "*-events-stats-index-*",
+                        "*-stats-index-*",
+                    ],
+                }
             ]
         }
     }
@@ -86,6 +98,56 @@ try:
     if res.status_code!=201:
         print(3)
         raise Exception(res.text)
+
+    print("# get indexes")
+    target_filter = "*-stats-index-*"
+    indexes = requests.get(f"{base_url}{target_filter}",**req_args).json()
+    alias_list = [f"{prefix}-events-stats-index", f"{prefix}-stats-index"]
+    target_index = []
+    for index_name, index_info in indexes.items():
+        aliases = index_info.get("aliases", {})
+        for alias_name, alias_info in aliases.items():
+            if alias_name in alias_list:
+                is_write_index = alias_info.get("is_write_index", None)
+                print(f"index: {index_name}, alias: {alias_name}, is_write_index: {is_write_index}")
+                if is_write_index:
+                    target_index.append([index_name,alias_name])
+
+    for index_name,alias_name in target_index:
+        print(f"## {index_name} setting")
+        print("### close index")
+        index_close_url = close_url.format(index_name)
+        res = requests.post(index_close_url, **req_args)
+        if res.status_code != 200:
+            raise Exception(res.text)
+
+        print("### update index settings")
+        update_settings_url = settings_url.format(index_name)
+        settings_body = {
+            "archived.index.lifecycle.name": None,
+            "archived.index.lifecycle.rollover_alias": None,
+            "index.plugins.index_state_management.policy_id": "weko_stats_policy",
+            "index.plugins.index_state_management.rollover_alias": alias_name
+        }
+        res = requests.put(update_settings_url, json=settings_body, **req_args)
+        if res.status_code != 200:
+            raise Exception(res.text)
+
+        print("### open index")
+        index_open_url = open_url.format(index_name)
+        res = requests.post(index_open_url, **req_args)
+        if res.status_code != 200:
+            raise Exception(res.text)
+
+        print("### add ism policy to index")
+        add_policy_url = ism_add_url.format(index_name)
+        add_policy_body = {
+            "policy_id": "weko_stats_policy"
+        }
+        res = requests.post(add_policy_url, json=add_policy_body, **req_args)
+        if res.status_code != 200:
+            raise Exception(res.text)
+
 except Exception as e:
     import traceback
     print("## raise error")
