@@ -329,21 +329,16 @@ def stats_reindex(stats_types, stats_prefix):
             print("### raise error: reindex: {}".format(index))
             raise Exception(res.text)
 
-        aliases = indexes_alias.get(index, {})
-
-        for alias in aliases:
-            if "-stats-" in alias:
-
-                rollover_url = base_url + "{}/_rollover".format(alias)
-                rollover_body = {
-                    "conditions": {
-                        "max_size": "50gb"
-                    }
-                }
-                res = requests.post(url=rollover_url,json=rollover_body,**req_args)
-                if res.status_code!=200:
-                    print("### raise error: reindex: {}".format(index))
-                    raise Exception(res.text)
+        rollover_url = base_url + "{}/_rollover".format(to_reindex)
+        rollover_body = {
+            "conditions": {
+                "max_size": "5mb"
+            }
+        }
+        res = requests.post(url=rollover_url,json=rollover_body,**req_args)
+        if res.status_code!=200:
+            print("### raise error: reindex: {}".format(index))
+            raise Exception(res.text)
 
 event_stats_types = [
     "events-stats-celery-task",
