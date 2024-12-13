@@ -296,46 +296,48 @@ def create_stats_index(index_name, stats_prefix, stats_types):
 def stats_reindex(stats_types, stats_prefix):
     print("## start reindex stats index: {}".format(stats_prefix))
     stats_indexes = [index for index in indexes_alias if replace_prefix_index(index) in stats_types]
+    from_sizes = {}
+
+    # 既存indexのsizeを調べる
+    def get_index_size(alias):
+        size_url = f"{base_url}{alias}/_stats/store"
+        res = requests.get(url=size_url, **req_args)
+        if res.status_code == 200:
+            stats = res.json()
+            for real_index, data in stats['indices'].items():
+                return data['total']['store']['size_in_bytes']
+        else:
+            print("### raise error: failed to get size for alias: {}".format(alias))
+            raise Exception(res.text)
+
+    for index in stats_indexes:
+        from_sizes[index] = get_index_size(index)
+        print(f"### Initial size for {index}: {from_sizes[index]} bytes")
+
+    to_reindex = f"{prefix}-{stats_prefix}-index"
+    to_size = 0
+    max_size = 5  # MB
+    size_limit = max_size * 1024 * 1024  # byteに変換する
+
     for index in stats_indexes:
         print("### reindex: {}".format(index))
         from_reindex = index
         to_reindex = f"{prefix}-{stats_prefix}-index"
         event_type = replace_prefix_index(index).replace(f"{stats_prefix}-","")
-        # Get size of from_reindex and to_reindex
-        def get_index_size(alias):
-            size_url = f"{base_url}{alias}/_stats/store"
-            res = requests.get(url=size_url, **req_args)
-            if res.status_code == 200:
-                stats = res.json()
-                for real_index, data in stats['indices'].items():
-                    return data['total']['store']['size_in_bytes']
-            else:
-                print("### raise error: failed to get size for alias: {}".format(alias))
-                raise Exception(res.text)
 
-        from_size = get_index_size(from_reindex)
-        print(from_size)
-        to_size = get_index_size(to_reindex)
+        from_size = from_sizes[from_reindex]
+        print(f"### Current from_index size: {from_size} bytes")
+        print(f"### Current to_index size: {to_size} bytes")
 
-        print(to_size)
-
-        max_size = 5
-        # mb to byte
-        size_limit = max_size * 1024 * 1024
-        print(size_limit)
-        # Check if rollover is needed
         if from_size + to_size > size_limit:
-            print("### Performing rollover for index: {}".format(to_reindex))
+            print(f"### Performing rollover for index: {to_reindex}")
             rollover_url = base_url + "{}/_rollover".format(to_reindex)
-            rollover_body = {
-                "conditions": {
-                    "max_size": f"{max_size}mb"
-                }
-            }
-            res = requests.post(url=rollover_url, json=rollover_body, **req_args)
+            res = requests.post(url=rollover_url, **req_args)
             if res.status_code != 200:
-                print("### raise error: rollover failed for index: {}".format(to_reindex))
+                print(f"### raise error: rollover failed for index: {to_reindex}")
                 raise Exception(res.text)
+            to_size = 0
+            print(f"### New to_index size after rollover: {to_size} bytes")
 
         # Reindex process
         body = {
@@ -361,12 +363,16 @@ def stats_reindex(stats_types, stats_prefix):
                 "params": {"event_type": event_type}
             }
         }
-        res = requests.post(url=reindex_url,json=body,**req_args)
-        if res.status_code!=200:
-            print("### raise error: reindex: {}".format(index))
+        res = requests.post(url=reindex_url, json=body, **req_args)
+        if res.status_code != 200:
+            print(f"### raise error: reindex: {from_reindex}")
             raise Exception(res.text)
 
-        print("### Reindex completed: {}".format(index))
+        # 累加当前 from_index 的大小到 to_size
+        to_size += from_size
+        print(f"### Updated to_index size: {to_size} bytes")
+
+        print(f"### Reindex completed: {from_reindex}")
 
 event_stats_types = [
     "events-stats-celery-task",
