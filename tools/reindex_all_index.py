@@ -301,6 +301,41 @@ def stats_reindex(stats_types, stats_prefix):
         from_reindex = index
         to_reindex = f"{prefix}-{stats_prefix}-index"
         event_type = replace_prefix_index(index).replace(f"{stats_prefix}-","")
+        # Get size of from_reindex and to_reindex
+        def get_index_size(index):
+            size_url = f"{base_url}{index}/_stats/store"
+            res = requests.get(url=size_url, **req_args)
+            if res.status_code == 200:
+                stats = res.json()
+                return stats['indices'][index]['primaries']['store']['size_in_bytes']
+            else:
+                print("### raise error: failed to get size for index: {}".format(index))
+                raise Exception(res.text)
+
+        from_size = get_index_size(from_reindex)
+        try:
+            to_size = get_index_size(to_reindex)
+        except Exception:
+            to_size = 0  # If the destination index does not exist yet
+
+        max_size = 5
+        # mb to byte
+        size_limit = max_size * 1024 * 1024
+        # Check if rollover is needed
+        if from_size + to_size > size_limit:
+            print("### Performing rollover for index: {}".format(to_reindex))
+            rollover_url = base_url + "{}/_rollover".format(to_reindex)
+            rollover_body = {
+                "conditions": {
+                    "max_size": f"{max_size}mb"
+                }
+            }
+            res = requests.post(url=rollover_url, json=rollover_body, **req_args)
+            if res.status_code != 200:
+                print("### raise error: rollover failed for index: {}".format(to_reindex))
+                raise Exception(res.text)
+
+        # Reindex process
         body = {
             "source": {"index": from_reindex},
             "dest": {"index": to_reindex},
@@ -329,16 +364,7 @@ def stats_reindex(stats_types, stats_prefix):
             print("### raise error: reindex: {}".format(index))
             raise Exception(res.text)
 
-        rollover_url = base_url + "{}/_rollover".format(to_reindex)
-        rollover_body = {
-            "conditions": {
-                "max_size": "5mb"
-            }
-        }
-        res = requests.post(url=rollover_url,json=rollover_body,**req_args)
-        if res.status_code!=200:
-            print("### raise error: reindex: {}".format(index))
-            raise Exception(res.text)
+        print("### Reindex completed: {}".format(index))
 
 event_stats_types = [
     "events-stats-celery-task",

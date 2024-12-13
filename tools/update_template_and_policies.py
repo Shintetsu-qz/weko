@@ -100,7 +100,7 @@ try:
         raise Exception(res.text)
 
     print("# get indexes")
-    target_filter = "*-stats-index-*"
+    target_filter = f"{prefix}-*"
     indexes = requests.get(f"{base_url}{target_filter}",**req_args).json()
     alias_list = [f"{prefix}-events-stats-index", f"{prefix}-stats-index"]
     target_index = []
