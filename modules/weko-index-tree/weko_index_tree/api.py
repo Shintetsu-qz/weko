@@ -1430,7 +1430,8 @@ class Indexes(object):
                     }
                 }
             }
-            es_index = current_app.config['SEARCH_UI_SEARCH_INDEX']
+            from invenio_search.utils import build_alias_name
+            es_index = build_alias_name(current_app.config['SEARCH_UI_SEARCH_INDEX'])
             query_q = json.dumps(upd_item_sort_q).replace("@index", index_path)
             query_q = json.loads(query_q)
             indexer = RecordIndexer()

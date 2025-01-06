@@ -606,8 +606,9 @@ def get_count_item_link(pk_id):
         "_source": ["control_number"],
         "track_total_hits": False
     }
+    from invenio_search.utils import build_alias_name
     result_itemCnt = RecordIndexer().client.search(
-        index=current_app.config['SEARCH_UI_SEARCH_INDEX'],
+        index = build_alias_name(current_app.config['SEARCH_UI_SEARCH_INDEX']),
         body=query_q
     )
 

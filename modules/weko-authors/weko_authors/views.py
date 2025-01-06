@@ -257,8 +257,9 @@ def get():
             author_id = author_id_info[0]['authorId']
             temp_str = json.dumps(query_item).replace(
                 "@author_id", author_id)
+            from invenio_search.utils import build_alias_name
             result_itemCnt = indexer.client.search(
-                index=current_app.config["SEARCH_INDEX_PREFIX"] + current_app.config["SEARCH_UI_SEARCH_INDEX"],
+                index = build_alias_name(current_app.config['SEARCH_UI_SEARCH_INDEX']),
                 body=json.loads(temp_str)
             )
             if result_itemCnt \

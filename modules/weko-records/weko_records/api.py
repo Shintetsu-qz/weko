@@ -590,8 +590,9 @@ class ItemTypes(RecordBase):
             name)
         result = []
         try:
+            from invenio_search.utils import build_alias_name
             search = RecordsSearch(
-                index=current_app.config['SEARCH_UI_SEARCH_INDEX'])
+                index=build_alias_name(current_app.config['SEARCH_UI_SEARCH_INDEX']))
             search = search.query(dsl.query.QueryString(query=query_string))
             search = search.sort('-publish_date', '-_updated')
             search_result = search.execute().to_dict()

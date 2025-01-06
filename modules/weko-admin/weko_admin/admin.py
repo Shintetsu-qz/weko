@@ -417,8 +417,9 @@ class ReportView(BaseView):
                 }
             }
 
+            from invenio_search.utils import build_alias_name
             aggs_results = get_aggregations(
-                current_app.config['SEARCH_UI_SEARCH_INDEX'], aggs_query)
+                 build_alias_name(current_app.config['SEARCH_UI_SEARCH_INDEX']), aggs_query)
             result = {
                 'total': 0,
                 'open': 0,

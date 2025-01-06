@@ -46,6 +46,7 @@ from weko_schema_ui.models import PublishStatus
 from .config import WEKO_INDEX_TREE_STATE_PREFIX
 from .errors import IndexBaseRESTError, IndexDeletedRESTError
 from .models import Index
+from invenio_search.utils import build_alias_name
 
 
 def get_index_link_list(pid=0):
@@ -458,10 +459,8 @@ def get_elasticsearch_records_data_by_indexes(index_ids, start_date, end_date):
     records_search = RecordsSearch()
     records_search = records_search.with_preference_param().\
         params(version=False)
-    records_search._index[0] =  "{}{}".format(
-        current_app.config['SEARCH_INDEX_PREFIX'], 
-        current_app.config['SEARCH_UI_SEARCH_INDEX']
-    )
+        
+    records_search._index[0] =  build_alias_name(current_app.config['SEARCH_UI_SEARCH_INDEX'])
     result = None
     try:
         from weko_search_ui.query import item_search_factory
@@ -604,7 +603,7 @@ def get_record_in_es_of_index(index_id, recursively=True):
 
     query_string = "relation_version_is_last:true"
     search = RecordsSearch(
-        index=current_app.config['SEARCH_UI_SEARCH_INDEX'])
+        index=build_alias_name(current_app.config['SEARCH_UI_SEARCH_INDEX']))
     must_query = [
         dsl.query.QueryString(query=query_string),
         dsl.Q("terms", path=child_idx),
@@ -831,7 +830,7 @@ def check_doi_in_index_and_child_index(index_id, recursively=True):
         child_idx = [index_id]
     query_string = "relation_version_is_last:true AND publish_status: {}".format(PublishStatus.PUBLIC.value)
     dsl.search = RecordsSearch(
-        index=current_app.config['SEARCH_UI_SEARCH_INDEX'])
+        index=build_alias_name(current_app.config['SEARCH_UI_SEARCH_INDEX']))
     must_query = [
         dsl.query.QueryString(query=query_string),
         dsl.Q("terms", path=child_idx),

@@ -2696,8 +2696,9 @@ def get_new_items_by_date(start_date: str, end_date: str, ranking=False) -> dict
     :param ranking:
     :return:
     """
+    from invenio_search.utils import build_alias_name
     record_search = RecordsSearch(
-        index=current_app.config['SEARCH_UI_SEARCH_INDEX'])
+        index=build_alias_name(current_app.config['SEARCH_UI_SEARCH_INDEX']))
     result = dict()
 
     try:

@@ -27,6 +27,7 @@ from invenio_records_rest.errors import InvalidQueryRESTError
 from invenio_search import RecordsSearch
 from weko_index_tree.api import Indexes
 from weko_schema_ui.models import PublishStatus
+from invenio_search.utils import build_alias_name
 
 from .config import WEKO_ROOT_INDEX
 
@@ -36,7 +37,7 @@ def get_items_by_index_tree(index_tree_id):
     records_search = RecordsSearch()
     records_search = records_search.with_preference_param().params(
         version=False)
-    records_search._index[0] = current_app.config['SEARCH_UI_SEARCH_INDEX']
+    records_search._index[0] = build_alias_name(current_app.config['SEARCH_UI_SEARCH_INDEX'])
     search_instance = item_path_search_factory(
         search=records_search,
         index_id=index_tree_id
@@ -51,7 +52,7 @@ def get_item_changes_by_index(index_tree_id, date_from, date_until):
     records_search = RecordsSearch()
     records_search = records_search.with_preference_param().params(
         version=False)
-    records_search._index[0] = current_app.config['SEARCH_UI_SEARCH_INDEX']
+    records_search._index[0] = build_alias_name(current_app.config['SEARCH_UI_SEARCH_INDEX'])
     search_instance = item_changes_search_factory(
         search=records_search,
         index_id=index_tree_id,
